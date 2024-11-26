@@ -19,6 +19,7 @@ let pipeInterval;
 let gameStarted = false;
 let isGameOver = false; // Tracks if the game is over
 let pipeSpeed = 2; // Initial pipe speed
+let pipeGap = 120; // Initial gap between pipes
 
 // Preload point sound
 pointSound.load();
@@ -38,7 +39,6 @@ window.addEventListener("keydown", (e) => {
 // Function to create pipes
 function createPipe() {
     const pipeHeight = Math.random() * 150 + 100; // Random height for top pipe
-    const gap = 120; // Gap between top and bottom pipes
 
     // Top pipe (flipped)
     const topPipe = document.createElement("div");
@@ -49,9 +49,9 @@ function createPipe() {
     // Bottom pipe (normal)
     const bottomPipe = document.createElement("div");
     bottomPipe.classList.add("pipe", "bottom");
-    bottomPipe.style.height = `${380 - pipeHeight - gap}px`;
+    bottomPipe.style.height = `${380 - pipeHeight - pipeGap}px`;
     bottomPipe.style.left = "800px";
-    bottomPipe.style.top = `${pipeHeight + gap}px`;
+    bottomPipe.style.top = `${pipeHeight + pipeGap}px`;
 
     game.appendChild(topPipe);
     game.appendChild(bottomPipe);
@@ -79,13 +79,16 @@ function updatePipes() {
             pointSound.currentTime = 0; // Reset the sound to the start
             pointSound.play();
 
-            // Increase pipe speed at specific scores
+            // Adjust difficulty at specific scores
             if (score === 3) {
                 pipeSpeed += 0.5;
+                pipeGap -= 10; // Reduce the gap slightly
             } else if (score === 8) {
                 pipeSpeed += 0.7;
+                pipeGap -= 10; // Reduce the gap further
             } else if (score === 13) {
                 pipeSpeed += 1;
+                pipeGap -= 10; // Reduce the gap more
             }
         }
 
@@ -165,6 +168,7 @@ function resetGame() {
     pipes = [];
     score = 0;
     pipeSpeed = 2; // Reset pipe speed
+    pipeGap = 120; // Reset pipe gap
     scoreDisplay.textContent = "Score: 0";
     startText.style.display = "block";
     gameStarted = false;
@@ -186,6 +190,7 @@ function startGame() {
     pipes = [];
     score = 0;
     pipeSpeed = 2; // Initial pipe speed
+    pipeGap = 120; // Initial pipe gap
     backgroundMusic.play(); // Play background music
 
     // Clear previous pipes
