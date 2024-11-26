@@ -7,28 +7,28 @@ const flapSound = document.getElementById("flap-sound");
 const pointSound = document.getElementById("point-sound");
 const backgroundMusic = document.getElementById("background-music");
 
-let birdY = 180; // Initial bird vertical position
+let birdY = 180; // Initial bird vertical position (adjusted for horizontal canvas)
 let birdVelocity = 0;
-let gravity = 0.3; // Easier gravity at the start
-let jumpPower = -5; // Small initial jump
+const gravity = 0.5;
+const jumpPower = -6; // Reduced jump power for shorter jumps
 let score = 0;
-let difficultyLevel = 1; // Start at easiest difficulty
-
-let pipeSpeed = 1.5; // Very slow pipes initially
-let pipeGap = 150; // Larger gap to make it easier
 
 let pipes = [];
 let gameInterval;
 let pipeInterval;
 let gameStarted = false;
-let isGameOver = false;
+let isGameOver = false; // Tracks if the game is over
+let pipeSpeed = 2; // Initial pipe speed
+
+// Preload point sound
+pointSound.load();
 
 // Key press event to make the bird jump
 window.addEventListener("keydown", (e) => {
     if (e.code === "Space") {
         if (!gameStarted) {
             startGame();
-        } else if (!isGameOver) {
+        } else if (!isGameOver) { // Play flap sound only if the game is not over
             birdVelocity = jumpPower;
             flapSound.play();
         }
@@ -37,23 +37,26 @@ window.addEventListener("keydown", (e) => {
 
 // Function to create pipes
 function createPipe() {
-    const pipeHeight = Math.random() * 150 + 100;
+    const pipeHeight = Math.random() * 150 + 100; // Random height for top pipe
+    const gap = 120; // Gap between top and bottom pipes
 
+    // Top pipe (flipped)
     const topPipe = document.createElement("div");
     topPipe.classList.add("pipe", "top");
     topPipe.style.height = `${pipeHeight}px`;
     topPipe.style.left = "800px";
 
+    // Bottom pipe (normal)
     const bottomPipe = document.createElement("div");
     bottomPipe.classList.add("pipe", "bottom");
-    bottomPipe.style.height = `${380 - pipeHeight - pipeGap}px`;
+    bottomPipe.style.height = `${380 - pipeHeight - gap}px`;
     bottomPipe.style.left = "800px";
-    bottomPipe.style.top = `${pipeHeight + pipeGap}px`;
+    bottomPipe.style.top = `${pipeHeight + gap}px`;
 
     game.appendChild(topPipe);
     game.appendChild(bottomPipe);
 
-    pipes.push({ topPipe, bottomPipe });
+    pipes.push({ topPipe, bottomPipe, passed: false });
 }
 
 // Function to update pipes and check collisions
@@ -62,25 +65,38 @@ function updatePipes() {
         const topPipe = pipe.topPipe;
         const bottomPipe = pipe.bottomPipe;
 
+        // Move pipes to the left
         const left = parseInt(topPipe.style.left);
-        const newLeft = left - pipeSpeed;
+        const newLeft = left - pipeSpeed; // Move left by pipe speed
         topPipe.style.left = `${newLeft}px`;
         bottomPipe.style.left = `${newLeft}px`;
 
+        // Update score when bird passes the pipe
+        if (!pipe.passed && newLeft + 60 < bird.offsetLeft) { // Check if pipe has been passed
+            pipe.passed = true;
+            score++;
+            scoreDisplay.textContent = `Score: ${score}`;
+            pointSound.currentTime = 0; // Reset the sound to the start
+            pointSound.play();
+
+            // Increase pipe speed at specific scores
+            if (score === 3) {
+                pipeSpeed += 0.5;
+            } else if (score === 8) {
+                pipeSpeed += 0.7;
+            } else if (score === 13) {
+                pipeSpeed += 1;
+            }
+        }
+
+        // Remove pipes that are off-screen
         if (newLeft < -60) {
             topPipe.remove();
             bottomPipe.remove();
             pipes.splice(index, 1);
-            score++;
-            scoreDisplay.textContent = `Score: ${score}`;
-            pointSound.play();
-
-            // Increase difficulty when score reaches 3
-            if (score === 3) {
-                increaseDifficulty();
-            }
         }
 
+        // Collision detection
         const birdRect = bird.getBoundingClientRect();
         const topPipeRect = topPipe.getBoundingClientRect();
         const bottomPipeRect = bottomPipe.getBoundingClientRect();
@@ -101,30 +117,24 @@ function updateBird() {
     birdY += birdVelocity;
     bird.style.top = `${birdY}px`;
 
+    // Check if the bird hits the top or bottom of the game area
     if (birdY < 0 || birdY > 340) {
         endGame();
     }
-}
-
-// Function to increase difficulty
-function increaseDifficulty() {
-    difficultyLevel++;
-    pipeSpeed = 2.5; // Increase pipe speed
-    pipeGap = 120; // Reduce gap size
-    gravity = 0.4; // Increase gravity slightly
-    console.log("Difficulty increased!"); // Log for debugging
 }
 
 // Function to end the game
 function endGame() {
     clearInterval(gameInterval);
     clearInterval(pipeInterval);
-    backgroundMusic.pause();
-    dieSound.play();
-    isGameOver = true;
+    backgroundMusic.pause(); // Stop background music
+    dieSound.play(); // Play die sound
+    isGameOver = true; // Set game over flag to true
 
+    // Hide the bird
     bird.style.display = "none";
 
+    // Show Game Over dialog
     const popup = document.createElement("div");
     popup.id = "popup";
 
@@ -145,23 +155,20 @@ function endGame() {
 
 // Reset game to initial state
 function resetGame() {
-    birdY = 180;
-    birdVelocity = 0;
-    gravity = 0.3; // Reset to easy gravity
-    jumpPower = -5; // Reset jump power
-    pipeSpeed = 1.5; // Reset pipe speed
-    pipeGap = 150; // Reset gap size
-    difficultyLevel = 1;
+    birdY = 180; // Reset bird position
+    bird.style.top = `${birdY}px`;
+    bird.style.display = "block"; // Show bird after reset
     pipes.forEach((pipe) => {
         pipe.topPipe.remove();
         pipe.bottomPipe.remove();
     });
     pipes = [];
     score = 0;
+    pipeSpeed = 2; // Reset pipe speed
     scoreDisplay.textContent = "Score: 0";
     startText.style.display = "block";
     gameStarted = false;
-    isGameOver = false;
+    isGameOver = false; // Reset game over flag
 }
 
 // Main game loop
@@ -178,13 +185,17 @@ function startGame() {
     birdVelocity = 0;
     pipes = [];
     score = 0;
-    backgroundMusic.play();
+    pipeSpeed = 2; // Initial pipe speed
+    backgroundMusic.play(); // Play background music
 
+    // Clear previous pipes
     document.querySelectorAll(".pipe").forEach((pipe) => pipe.remove());
 
+    // Update score display
     scoreDisplay.textContent = "Score: 0";
 
-    createPipe();
+    // Shorten time for the first pipe
+    createPipe(); // Immediately create the first pipe
     gameInterval = setInterval(gameLoop, 20);
-    pipeInterval = setInterval(createPipe, 2000);
+    pipeInterval = setInterval(createPipe, 1500); // Shorter delay
 }
